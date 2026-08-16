@@ -8,7 +8,7 @@ You can install this package using `pip` or use it directly with `uvx`:
 
 ```bash
 # To run via uvx:
-uvx --from git+https://github.com/USERNAME/eip-mcp-server eip-mcp-server
+uvx --from git+https://github.com/eecheonwu/eip-mcp-server eip-mcp-server
 ```
 
 ## IDE Configuration
@@ -20,7 +20,7 @@ To configure this in your Claude Desktop or other MCP-compatible IDE config file
   "mcpServers": {
     "eip-mcp-server": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/YOUR_USERNAME/eip-mcp-server", "eip-mcp-server"]
+      "args": ["--from", "git+https://github.com/eecheonwu/eip-mcp-server", "eip-mcp-server"]
     }
   }
 }
