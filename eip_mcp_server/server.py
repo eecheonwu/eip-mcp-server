@@ -1,0 +1,181 @@
+import os
+import logging
+from pathlib import Path
+from mcp.server.fastmcp import FastMCP
+from dotenv import load_dotenv
+
+from eip_mcp_server.generator.plan_generator import PlanGenerator
+from eip_mcp_server.prompts.architect import ARCHITECT_PROMPT
+from eip_mcp_server.prompts.developer import DEVELOPER_PROMPT
+from eip_mcp_server.prompts.tester import TESTER_PROMPT
+from eip_mcp_server.prompts.security import SECURITY_PROMPT
+
+load_dotenv()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("eip_mcp_server")
+
+mcp = FastMCP("eip-mcp-server")
+
+# Resolve KNOWLEDGE_DIR relative to this file's location to avoid CWD issues
+# __file__ is src/server.py -> parent is src/ -> parent is mcp-server/ -> parent is EIP/
+KNOWLEDGE_DIR = (Path(__file__).parent.parent.parent / "ssot").resolve()
+
+def _get_context() -> str:
+    """Helper to read all markdown files in KNOWLEDGE_DIR for context."""
+    context_parts = []
+    if KNOWLEDGE_DIR.exists():
+        for file in KNOWLEDGE_DIR.rglob("*.md"):
+            context_parts.append(f"--- {file.name} ---\n{file.read_text(encoding='utf-8')}\n")
+    return "\n".join(context_parts) if context_parts else "No local SSOT context found."
+
+@mcp.tool()
+def initialize_local_ssot(project_id: str) -> str:
+    """
+    Connects to the EIP Web App, pulls initial business requirements (SRD)
+    and scaffolds the local knowledge/ directory.
+    """
+    KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # STUB: Future API call to Web Backend
+    srd_path = KNOWLEDGE_DIR / "SRD.md"
+    srd_content = f"# Software Requirements Document\n\nScaffolded for project {project_id}."
+    if not srd_path.exists():
+        srd_path.write_text(srd_content, encoding='utf-8')
+    
+    return f"Successfully scaffolded local SSOT in {KNOWLEDGE_DIR}"
+
+@mcp.tool()
+def generate_implementation_plan() -> str:
+    """
+    Acts as the Software Architect. Reads local SSOT artifacts and generates
+    a massive, professional-grade implementation-plan.md.
+    """
+    generator = PlanGenerator()
+    context = _get_context()
+    plan_content = generator.generate_markdown_plan(system_prompt=ARCHITECT_PROMPT, context=context)
+    
+    # 1. Save the implementation plan to the parent directory
+    output_path = KNOWLEDGE_DIR.parent / "implementation-plan.md"
+    output_path.write_text(plan_content, encoding="utf-8")
+    
+    # 2. Automatically generate the AI Agent context packages in the ssot/agents directory
+    agents_dir = KNOWLEDGE_DIR / "agents"
+    agents_dir.mkdir(parents=True, exist_ok=True)
+    
+    frontend_agent = f"# Frontend Engineer Agent\n\n## Role\nYou are the Frontend UI Engineer. Your job is to implement the user interface based on `implementation-plan.md` and the SSOT.\n\n## Context\n{context}"
+    backend_agent = f"# Backend Engineer Agent\n\n## Role\nYou are the Backend API Engineer. Your job is to implement the server logic, database models, and APIs based on `implementation-plan.md` and the SSOT.\n\n## Context\n{context}"
+    qa_agent = f"# QA Testing Agent\n\n## Role\nYou are the Test Engineer. Your job is to ensure code quality by executing and verifying `test-plan.md` against the SSOT.\n\n## Context\n{context}"
+    
+    (agents_dir / "frontend_agent.md").write_text(frontend_agent, encoding="utf-8")
+    (agents_dir / "backend_agent.md").write_text(backend_agent, encoding="utf-8")
+    (agents_dir / "qa_agent.md").write_text(qa_agent, encoding="utf-8")
+    
+    return f"Implementation Plan and Agent contexts generated successfully at {output_path}"
+
+@mcp.tool()
+def generate_task_plan() -> str:
+    """Generates an exhaustive Task Plan and saves it to the local workspace."""
+    generator = PlanGenerator()
+    context = _get_context()
+    plan_content = generator.generate_markdown_plan(system_prompt=DEVELOPER_PROMPT, context=context)
+    output_path = KNOWLEDGE_DIR.parent / "task-plan.md"
+    output_path.write_text(plan_content, encoding="utf-8")
+    return f"Task Plan generated successfully at {output_path}"
+
+@mcp.tool()
+def generate_test_plan() -> str:
+    """Generates an exhaustive Test Plan and saves it to the local workspace."""
+    generator = PlanGenerator()
+    context = _get_context()
+    plan_content = generator.generate_markdown_plan(system_prompt=TESTER_PROMPT, context=context)
+    output_path = KNOWLEDGE_DIR.parent / "test-plan.md"
+    output_path.write_text(plan_content, encoding="utf-8")
+    return f"Test Plan generated successfully at {output_path}"
+
+@mcp.tool()
+def generate_security_plan() -> str:
+    """Generates an exhaustive Security Plan and saves it to the local workspace."""
+    generator = PlanGenerator()
+    context = _get_context()
+    plan_content = generator.generate_markdown_plan(system_prompt=SECURITY_PROMPT, context=context)
+    output_path = KNOWLEDGE_DIR.parent / "security-plan.md"
+    output_path.write_text(plan_content, encoding="utf-8")
+    return f"Security Plan generated successfully at {output_path}"
+
+@mcp.tool()
+def synchronize_ssot(update_summary: str) -> str:
+    """
+    Called by the IDE Coding Agent to synchronize local SSOT changes with the EIP Web App.
+    Reads the local ssot/ directory, determines what has changed, and pushes the updates 
+    back to the cloud database and Knowledge Graph.
+    
+    Args:
+        update_summary: A brief description of what was changed locally during development.
+    """
+    logger.info(f"Triggering SSOT Orchestrator sync: {update_summary}")
+    
+    import datetime
+    import requests
+    import re
+    
+    ssot_yaml_path = KNOWLEDGE_DIR / "ssot.yaml"
+    project_id = None
+    if ssot_yaml_path.exists():
+        content = ssot_yaml_path.read_text(encoding="utf-8")
+        match = re.search(r"project_id:\s*([^\n\r]+)", content)
+        if match:
+            project_id = match.group(1).strip()
+            
+    if not project_id:
+        return "Error: Cannot sync without a valid project_id in ssot.yaml"
+        
+    items = []
+    # Collect all markdown files from the primary knowledge directories
+    for d in ["requirements", "architecture", "system", "testing"]:
+        dir_path = KNOWLEDGE_DIR / d
+        if dir_path.exists():
+            for file_path in dir_path.glob("*.md"):
+                # Infer artifact type based on folder mapping
+                atype = "UNKNOWN"
+                if d == "requirements": atype = "SRD"
+                elif d == "architecture":
+                    if "adr" in file_path.name.lower(): atype = "ADR"
+                    elif "c4" in file_path.name.lower(): atype = "C4_DIAGRAM"
+                    elif "uml" in file_path.name.lower(): atype = "UML"
+                elif d == "testing": atype = "TECHNICAL_SPEC"
+                
+                items.append({
+                    "filename": file_path.name,
+                    "content": file_path.read_text(encoding="utf-8"),
+                    "artifact_type": atype
+                })
+                
+    if not items:
+        return "No markdown files found to sync."
+        
+    try:
+        response = requests.post(
+            f"http://localhost:8000/api/v1/projects/{project_id}/ssot/sync",
+            json={
+                "update_summary": update_summary,
+                "items": items
+            },
+            timeout=10.0
+        )
+        response.raise_for_status()
+        result = response.json()
+        
+        # Update timestamp on success
+        now = datetime.datetime.now().isoformat()
+        ssot_content = ssot_yaml_path.read_text(encoding="utf-8")
+        ssot_content = ssot_content.replace('last_synced: ""', f'last_synced: "{now}"')
+        ssot_yaml_path.write_text(ssot_content, encoding="utf-8")
+        
+        return f"Successfully synchronized local SSOT with EIP Web App. {result.get('artifacts_updated', 0)} artifacts updated. {update_summary}"
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Sync failed: {e}")
+        return f"Error during synchronization: {e}"
+
+if __name__ == "__main__":
+    logger.info("Starting EIP MCP Server...")
+    mcp.run()

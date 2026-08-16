@@ -1,0 +1,7 @@
+fastmcp
+requests
+google-genai
+python-dotenv
+pydantic
+fastapi
+uvicorn
