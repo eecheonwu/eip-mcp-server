@@ -16,9 +16,17 @@ logger = logging.getLogger("eip_mcp_server")
 
 mcp = FastMCP("eip-mcp-server")
 
-# Resolve KNOWLEDGE_DIR relative to this file's location to avoid CWD issues
-# __file__ is src/server.py -> parent is src/ -> parent is mcp-server/ -> parent is EIP/
-KNOWLEDGE_DIR = (Path(__file__).parent.parent.parent / "ssot").resolve()
+def get_project_root(project_path: str = None) -> Path:
+    """Resolves the project root path."""
+    if project_path:
+        return Path(project_path).resolve()
+    if "PROJECT_ROOT" in os.environ:
+        return Path(os.environ["PROJECT_ROOT"]).resolve()
+    return Path(os.getcwd()).resolve()
+
+def get_knowledge_dir(project_path: str = None) -> Path:
+    """Resolves the ssot directory for the given project path."""
+    return get_project_root(project_path) / "ssot"
 
 # === Start Webhook Listener in Background ===
 def _start_webhook_listener():
@@ -46,46 +54,48 @@ def _start_webhook_listener():
 _start_webhook_listener()
 # ============================================
 
-def _get_context() -> str:
-    """Helper to read all markdown files in KNOWLEDGE_DIR for context."""
+def _get_context(knowledge_dir: Path) -> str:
+    """Helper to read all markdown files in the knowledge directory for context."""
     context_parts = []
-    if KNOWLEDGE_DIR.exists():
-        for file in KNOWLEDGE_DIR.rglob("*.md"):
+    if knowledge_dir.exists():
+        for file in knowledge_dir.rglob("*.md"):
             context_parts.append(f"--- {file.name} ---\n{file.read_text(encoding='utf-8')}\n")
     return "\n".join(context_parts) if context_parts else "No local SSOT context found."
 
 @mcp.tool()
-def initialize_local_ssot(project_id: str) -> str:
+def initialize_local_ssot(project_id: str, project_path: str = None) -> str:
     """
     Connects to the EIP Web App, pulls initial business requirements (SRD)
     and scaffolds the local knowledge/ directory.
     """
-    KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+    knowledge_dir = get_knowledge_dir(project_path)
+    knowledge_dir.mkdir(parents=True, exist_ok=True)
     
     # STUB: Future API call to Web Backend
-    srd_path = KNOWLEDGE_DIR / "SRD.md"
+    srd_path = knowledge_dir / "SRD.md"
     srd_content = f"# Software Requirements Document\n\nScaffolded for project {project_id}."
     if not srd_path.exists():
         srd_path.write_text(srd_content, encoding='utf-8')
     
-    return f"Successfully scaffolded local SSOT in {KNOWLEDGE_DIR}"
+    return f"Successfully scaffolded local SSOT in {knowledge_dir}"
 
 @mcp.tool()
-def generate_implementation_plan() -> str:
+def generate_implementation_plan(project_path: str = None) -> str:
     """
     Acts as the Software Architect. Reads local SSOT artifacts and generates
     a massive, professional-grade implementation-plan.md.
     """
+    knowledge_dir = get_knowledge_dir(project_path)
     generator = PlanGenerator()
-    context = _get_context()
+    context = _get_context(knowledge_dir)
     plan_content = generator.generate_markdown_plan(system_prompt=ARCHITECT_PROMPT, context=context)
     
     # 1. Save the implementation plan to the parent directory
-    output_path = KNOWLEDGE_DIR.parent / "implementation-plan.md"
+    output_path = knowledge_dir.parent / "implementation-plan.md"
     output_path.write_text(plan_content, encoding="utf-8")
     
     # 2. Automatically generate the AI Agent context packages in the ssot/agents directory
-    agents_dir = KNOWLEDGE_DIR / "agents"
+    agents_dir = knowledge_dir / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
     
     frontend_agent = f"# Frontend Engineer Agent\n\n## Role\nYou are the Frontend UI Engineer. Your job is to implement the user interface based on `implementation-plan.md` and the SSOT.\n\n## Context\n{context}"
@@ -99,37 +109,40 @@ def generate_implementation_plan() -> str:
     return f"Implementation Plan and Agent contexts generated successfully at {output_path}"
 
 @mcp.tool()
-def generate_task_plan() -> str:
+def generate_task_plan(project_path: str = None) -> str:
     """Generates an exhaustive Task Plan and saves it to the local workspace."""
+    knowledge_dir = get_knowledge_dir(project_path)
     generator = PlanGenerator()
-    context = _get_context()
+    context = _get_context(knowledge_dir)
     plan_content = generator.generate_markdown_plan(system_prompt=DEVELOPER_PROMPT, context=context)
-    output_path = KNOWLEDGE_DIR.parent / "task-plan.md"
+    output_path = knowledge_dir.parent / "task-plan.md"
     output_path.write_text(plan_content, encoding="utf-8")
     return f"Task Plan generated successfully at {output_path}"
 
 @mcp.tool()
-def generate_test_plan() -> str:
+def generate_test_plan(project_path: str = None) -> str:
     """Generates an exhaustive Test Plan and saves it to the local workspace."""
+    knowledge_dir = get_knowledge_dir(project_path)
     generator = PlanGenerator()
-    context = _get_context()
+    context = _get_context(knowledge_dir)
     plan_content = generator.generate_markdown_plan(system_prompt=TESTER_PROMPT, context=context)
-    output_path = KNOWLEDGE_DIR.parent / "test-plan.md"
+    output_path = knowledge_dir.parent / "test-plan.md"
     output_path.write_text(plan_content, encoding="utf-8")
     return f"Test Plan generated successfully at {output_path}"
 
 @mcp.tool()
-def generate_security_plan() -> str:
+def generate_security_plan(project_path: str = None) -> str:
     """Generates an exhaustive Security Plan and saves it to the local workspace."""
+    knowledge_dir = get_knowledge_dir(project_path)
     generator = PlanGenerator()
-    context = _get_context()
+    context = _get_context(knowledge_dir)
     plan_content = generator.generate_markdown_plan(system_prompt=SECURITY_PROMPT, context=context)
-    output_path = KNOWLEDGE_DIR.parent / "security-plan.md"
+    output_path = knowledge_dir.parent / "security-plan.md"
     output_path.write_text(plan_content, encoding="utf-8")
     return f"Security Plan generated successfully at {output_path}"
 
 @mcp.tool()
-def synchronize_ssot(update_summary: str) -> str:
+def synchronize_ssot(update_summary: str, project_path: str = None) -> str:
     """
     Called by the IDE Coding Agent to synchronize local SSOT changes with the EIP Web App.
     Reads the local ssot/ directory, determines what has changed, and pushes the updates 
@@ -144,7 +157,8 @@ def synchronize_ssot(update_summary: str) -> str:
     import requests
     import re
     
-    ssot_yaml_path = KNOWLEDGE_DIR / "ssot.yaml"
+    knowledge_dir = get_knowledge_dir(project_path)
+    ssot_yaml_path = knowledge_dir / "ssot.yaml"
     project_id = None
     if ssot_yaml_path.exists():
         content = ssot_yaml_path.read_text(encoding="utf-8")
@@ -158,7 +172,7 @@ def synchronize_ssot(update_summary: str) -> str:
     items = []
     # Collect all markdown files from the primary knowledge directories
     for d in ["requirements", "architecture", "system", "testing"]:
-        dir_path = KNOWLEDGE_DIR / d
+        dir_path = knowledge_dir / d
         if dir_path.exists():
             for file_path in dir_path.glob("*.md"):
                 # Infer artifact type based on folder mapping
