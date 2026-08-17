@@ -9,7 +9,7 @@ from eip_mcp_server.server import (
     generate_task_plan,
     generate_test_plan,
     generate_security_plan,
-    KNOWLEDGE_DIR
+    get_knowledge_dir
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -24,18 +24,20 @@ class TriggerPayload(BaseModel):
     plan_type: str
     artifacts: List[Dict] = []
     graph_context: str = ""
+    project_path: str = None
 
 def process_plan(payload: TriggerPayload):
-    logger.info(f"Received trigger to generate {payload.plan_type} in {KNOWLEDGE_DIR}")
+    knowledge_dir = get_knowledge_dir(payload.project_path)
+    logger.info(f"Received trigger to generate {payload.plan_type} in {knowledge_dir}")
     
     # Scaffold SSOT directories
     dirs = ["requirements", "architecture", "system", "testing", "agents"]
     for d in dirs:
-        dir_path = KNOWLEDGE_DIR / d
+        dir_path = knowledge_dir / d
         dir_path.mkdir(parents=True, exist_ok=True)
         (dir_path / ".gitkeep").touch(exist_ok=True)
         
-    ssot_yaml_path = KNOWLEDGE_DIR / "ssot.yaml"
+    ssot_yaml_path = knowledge_dir / "ssot.yaml"
     if not ssot_yaml_path.exists():
         ssot_yaml_content = f"""project_id: {payload.project_id}
 version: 1.0.0
@@ -58,13 +60,13 @@ directories:
             
         atype = artifact.get("type", "")
         if atype == "SRD":
-            target_path = KNOWLEDGE_DIR / "requirements" / name
+            target_path = knowledge_dir / "requirements" / name
         elif atype == "ADR" or atype == "UML" or atype == "C4":
-            target_path = KNOWLEDGE_DIR / "architecture" / name
+            target_path = knowledge_dir / "architecture" / name
         elif atype == "Test Spec":
-            target_path = KNOWLEDGE_DIR / "testing" / name
+            target_path = knowledge_dir / "testing" / name
         else:
-            target_path = KNOWLEDGE_DIR / "system" / name
+            target_path = knowledge_dir / "system" / name
             
         content = artifact.get("content")
         if content is None:
@@ -73,20 +75,20 @@ directories:
         target_path.write_text(content, encoding='utf-8')
         
     if payload.graph_context:
-        (KNOWLEDGE_DIR / "system" / "WEB_GRAPH_CONTEXT.md").write_text(payload.graph_context, encoding='utf-8')
+        (knowledge_dir / "system" / "WEB_GRAPH_CONTEXT.md").write_text(payload.graph_context, encoding='utf-8')
     
     if payload.plan_type == "Implementation Plan":
-        generate_implementation_plan()
+        generate_implementation_plan(project_path=payload.project_path)
     elif payload.plan_type == "Task Plan":
-        generate_task_plan()
+        generate_task_plan(project_path=payload.project_path)
     elif payload.plan_type == "Test Plan":
-        generate_test_plan()
+        generate_test_plan(project_path=payload.project_path)
     elif payload.plan_type == "Security Plan":
-        generate_security_plan()
+        generate_security_plan(project_path=payload.project_path)
     else:
         logger.warning(f"Unknown plan type: {payload.plan_type}")
         # Default to implementation plan
-        generate_implementation_plan()
+        generate_implementation_plan(project_path=payload.project_path)
 
 @app.post("/trigger")
 async def trigger_webhook(payload: TriggerPayload, background_tasks: BackgroundTasks):
