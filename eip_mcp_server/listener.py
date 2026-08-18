@@ -21,6 +21,7 @@ from typing import List, Dict
 
 class TriggerPayload(BaseModel):
     project_id: str
+    plan_id: str = None
     plan_type: str
     artifacts: List[Dict] = []
     graph_context: str = ""
@@ -87,6 +88,14 @@ directories:
         logger.warning(f"Unknown plan type: {payload.plan_type}")
         # Default to implementation plan
         generate_implementation_plan(project_path=payload.project_path)
+        
+    if payload.plan_id:
+        try:
+            import httpx
+            httpx.post(f"http://localhost:8000/api/v1/plans/{payload.plan_id}/complete", timeout=5.0)
+            logger.info(f"Successfully notified backend of plan completion for {payload.plan_id}")
+        except Exception as e:
+            logger.error(f"Failed to notify backend of plan completion: {e}")
 
 @app.post("/trigger")
 async def trigger_webhook(payload: TriggerPayload, background_tasks: BackgroundTasks):
