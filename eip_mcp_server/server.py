@@ -28,31 +28,7 @@ def get_knowledge_dir(project_path: str = None) -> Path:
     """Resolves the ssot directory for the given project path."""
     return get_project_root(project_path) / "ssot"
 
-# === Start Webhook Listener in Background ===
-def _start_webhook_listener():
-    import threading
-    import socket
-    import uvicorn
-    
-    # Check if port is already in use
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        if s.connect_ex(('127.0.0.1', 8123)) == 0:
-            logger.info("Port 8123 is already in use. Assuming webhook listener is already running.")
-            return
-
-    def run_uvicorn():
-        from eip_mcp_server.listener import app
-        # Hide access logs to prevent polluting IDE stdout
-        config = uvicorn.Config(app, host="0.0.0.0", port=8123, log_level="error")
-        server = uvicorn.Server(config)
-        server.run()
-        
-    t = threading.Thread(target=run_uvicorn, daemon=True)
-    t.start()
-    logger.info("Background webhook listener started on port 8123.")
-
-_start_webhook_listener()
-# ============================================
+# Webhook listener is started explicitly in listener.py
 
 def _get_context(knowledge_dir: Path) -> str:
     """Helper to read all markdown files in the knowledge directory for context."""
