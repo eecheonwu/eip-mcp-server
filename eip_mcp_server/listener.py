@@ -1,4 +1,5 @@
 import logging
+import sys
 from fastapi import FastAPI, BackgroundTasks
 import uvicorn
 from pydantic import BaseModel
@@ -11,7 +12,7 @@ from eip_mcp_server.server import (
     get_knowledge_dir
 )
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 logger = logging.getLogger("trigger_listener")
 
 app = FastAPI()

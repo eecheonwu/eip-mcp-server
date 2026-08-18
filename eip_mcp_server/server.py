@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 from pathlib import Path
 from mcp.server.fastmcp import FastMCP
@@ -10,7 +11,7 @@ from eip_mcp_server.prompts.developer import DEVELOPER_PROMPT
 from eip_mcp_server.prompts.tester import TESTER_PROMPT
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 logger = logging.getLogger("eip_mcp_server")
 
 mcp = FastMCP("eip-mcp-server")
