@@ -26,10 +26,9 @@ This MCP server operates in a **dual-mode architecture**:
 When connected to your IDE, the AI agent gains access to the following tools:
 
 - `initialize_local_ssot`: Connects to the EIP Web App to scaffold your local `ssot/` directory using the project's Software Requirements Document (SRD).
-- `generate_implementation_plan`: Acts as a Staff Engineer. Analyzes local SSOT context and outputs an exhaustive, step-by-step implementation plan.
-- `generate_task_plan`: Decompiles the implementation plan into highly specific executable tasks for local agents.
+- `generate_implementation_plan`: Acts as a Staff Architect. Analyzes local SSOT context and outputs an exhaustive, step-by-step implementation plan (with embedded security architecture).
+- `generate_task_plan`: Decompiles the implementation plan into highly specific executable tasks for local agents (including integrated security guardrails).
 - `generate_test_plan`: Creates comprehensive testing strategies (STQE, RTM) mapped to feature requirements.
-- `generate_security_plan`: Generates a rigorous application security plan tailored to the project architecture.
 - `synchronize_ssot`: Pushes local documentation and architectural updates back to the EIP Web App's Knowledge Graph to resolve drift.
 
 ---
