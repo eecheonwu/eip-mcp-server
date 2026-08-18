@@ -8,7 +8,6 @@ from eip_mcp_server.generator.plan_generator import PlanGenerator
 from eip_mcp_server.prompts.architect import ARCHITECT_PROMPT
 from eip_mcp_server.prompts.developer import DEVELOPER_PROMPT
 from eip_mcp_server.prompts.tester import TESTER_PROMPT
-from eip_mcp_server.prompts.security import SECURITY_PROMPT
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -74,8 +73,8 @@ def generate_implementation_plan(project_path: str = None) -> str:
     agents_dir = knowledge_dir / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
     
-    frontend_agent = f"# Frontend Engineer Agent\n\n## Role\nYou are the Frontend UI Engineer. Your job is to implement the user interface based on `implementation-plan.md` and the SSOT.\n\n## Context\n{context}"
-    backend_agent = f"# Backend Engineer Agent\n\n## Role\nYou are the Backend API Engineer. Your job is to implement the server logic, database models, and APIs based on `implementation-plan.md` and the SSOT.\n\n## Context\n{context}"
+    frontend_agent = f"# Frontend Engineer Agent\n\n## Role\nYou are the Frontend UI Engineer. Your job is to implement the user interface based on `implementation-plan.md`, `task-plan.md`, and the SSOT.\n\n## Context\n{context}"
+    backend_agent = f"# Backend Engineer Agent\n\n## Role\nYou are the Backend API Engineer. Your job is to implement the server logic, database models, and APIs based on `implementation-plan.md`, `task-plan.md`, and the SSOT.\n\n## Context\n{context}"
     qa_agent = f"# QA Testing Agent\n\n## Role\nYou are the Test Engineer. Your job is to ensure code quality by executing and verifying `test-plan.md` against the SSOT.\n\n## Context\n{context}"
     
     (agents_dir / "frontend_agent.md").write_text(frontend_agent, encoding="utf-8")
@@ -105,17 +104,6 @@ def generate_test_plan(project_path: str = None) -> str:
     output_path = knowledge_dir.parent / "test-plan.md"
     output_path.write_text(plan_content, encoding="utf-8")
     return f"Test Plan generated successfully at {output_path}"
-
-@mcp.tool()
-def generate_security_plan(project_path: str = None) -> str:
-    """Generates an exhaustive Security Plan and saves it to the local workspace."""
-    knowledge_dir = get_knowledge_dir(project_path)
-    generator = PlanGenerator()
-    context = _get_context(knowledge_dir)
-    plan_content = generator.generate_markdown_plan(system_prompt=SECURITY_PROMPT, context=context)
-    output_path = knowledge_dir.parent / "security-plan.md"
-    output_path.write_text(plan_content, encoding="utf-8")
-    return f"Security Plan generated successfully at {output_path}"
 
 @mcp.tool()
 def synchronize_ssot(update_summary: str, project_path: str = None) -> str:
@@ -194,4 +182,27 @@ def synchronize_ssot(update_summary: str, project_path: str = None) -> str:
 
 if __name__ == "__main__":
     logger.info("Starting EIP MCP Server...")
+    
+    # === Start Webhook Listener in Background ===
+    import threading
+    import socket
+    import uvicorn
+    
+    # Check if port is already in use
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        if s.connect_ex(('127.0.0.1', 8123)) != 0:
+            def run_uvicorn():
+                from eip_mcp_server.listener import app
+                # Hide access logs to prevent polluting IDE stdout
+                config = uvicorn.Config(app, host="0.0.0.0", port=8123, log_level="error")
+                server = uvicorn.Server(config)
+                server.run()
+                
+            t = threading.Thread(target=run_uvicorn, daemon=True)
+            t.start()
+            logger.info("Background webhook listener started on port 8123.")
+        else:
+            logger.info("Port 8123 is already in use. Assuming webhook listener is already running.")
+    # ============================================
+    
     mcp.run()

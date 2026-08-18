@@ -8,7 +8,6 @@ from eip_mcp_server.server import (
     generate_implementation_plan,
     generate_task_plan,
     generate_test_plan,
-    generate_security_plan,
     get_knowledge_dir
 )
 
@@ -63,7 +62,7 @@ directories:
             target_path = knowledge_dir / "requirements" / name
         elif atype == "ADR" or atype == "UML" or atype == "C4":
             target_path = knowledge_dir / "architecture" / name
-        elif atype == "Test Spec":
+        elif atype == "TEST_SPEC" or atype == "Test Spec":
             target_path = knowledge_dir / "testing" / name
         else:
             target_path = knowledge_dir / "system" / name
@@ -83,8 +82,6 @@ directories:
         generate_task_plan(project_path=payload.project_path)
     elif payload.plan_type == "Test Plan":
         generate_test_plan(project_path=payload.project_path)
-    elif payload.plan_type == "Security Plan":
-        generate_security_plan(project_path=payload.project_path)
     else:
         logger.warning(f"Unknown plan type: {payload.plan_type}")
         # Default to implementation plan

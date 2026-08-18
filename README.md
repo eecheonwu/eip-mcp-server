@@ -36,30 +36,32 @@ When connected to your IDE, the AI agent gains access to the following tools:
 
 ## 📦 Installation & Usage
 
-You can run the server seamlessly using [`uvx`](https://github.com/astral-sh/uv), meaning no manual virtual environments or dependency management is required.
+For the best development experience and to keep your API keys secure, we recommend cloning the repository locally and configuring your IDE to run it directly.
 
-### 1. Direct Execution via `uvx`
-If you wish to test the server locally or run it via terminal:
+### 1. Clone the Repository
+Clone this repository into a convenient directory on your local machine:
 
 ```bash
-uvx --from git+https://github.com/eecheonwu/eip-mcp-server.git eip-mcp-server
+git clone https://github.com/eecheonwu/eip-mcp-server.git
+cd eip-mcp-server
 ```
 
 ### 2. IDE Configuration (Claude Desktop, Antigravity, etc.)
-To give your AI coding assistant full access to the EIP ecosystem, add the following to your IDE's MCP configuration file (e.g., `mcp_config.json` or `claude_desktop_config.json`).
+To give your AI coding assistant full access to the EIP ecosystem, add the following to your IDE's MCP configuration file (e.g., `mcp_config.json` or `claude_desktop_config.json`). 
 
-> **⚠️ Important:** The `-q` (quiet) flag is required for `uvx`. Without it, `uvx` build logs will pollute standard output, causing the MCP JSON-RPC initialization handshake to crash.
+Instead of storing API keys in a `.env` file, the IDE will securely inject the `GEMINI_API_KEY` as an environment variable when it starts the server. Update the `cwd` or `--directory` path to match where you cloned the repository.
 
 ```json
 {
   "mcpServers": {
     "eip-mcp-server": {
-      "command": "uvx",
+      "command": "uv",
       "args": [
-        "-q",
-        "--from",
-        "git+https://github.com/eecheonwu/eip-mcp-server.git",
-        "eip-mcp-server"
+        "run",
+        "--directory",
+        "/path/to/your/local/eip-mcp-server",
+        "python",
+        "eip_mcp_server/server.py"
       ],
       "env": {
         "GEMINI_API_KEY": "your-api-key-here"
@@ -68,6 +70,8 @@ To give your AI coding assistant full access to the EIP ecosystem, add the follo
   }
 }
 ```
+
+> **💡 Note on Webhooks:** When your IDE starts the MCP Server, it will automatically spawn the background HTTP webhook listener on port `8123`.
 
 #### Supported IDEs:
 - **Claude Desktop**: Add to `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS).
