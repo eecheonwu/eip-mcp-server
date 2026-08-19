@@ -48,7 +48,9 @@ cd eip-mcp-server
 ### 2. IDE Configuration (Claude Desktop, Antigravity, etc.)
 To give your AI coding assistant full access to the EIP ecosystem, add the following to your IDE's MCP configuration file (e.g., `mcp_config.json` or `claude_desktop_config.json`). 
 
-Instead of storing API keys in a `.env` file, the IDE will securely inject the `GEMINI_API_KEY` as an environment variable when it starts the server. Update the `cwd` or `--directory` path to match where you cloned the repository.
+While you can use a local `.env` file (see `.env.example`), the most secure strategy is to let your IDE securely inject the API keys as environment variables when it starts the server. Update the `cwd` or `--directory` path to match where you cloned the repository.
+
+You can configure both Google Gemini and Meta AI (via OpenRouter), giving you the choice of which engine to use in the EIP Web App.
 
 ```json
 {
@@ -63,7 +65,8 @@ Instead of storing API keys in a `.env` file, the IDE will securely inject the `
         "eip_mcp_server/server.py"
       ],
       "env": {
-        "GEMINI_API_KEY": "your-api-key-here"
+        "GEMINI_API_KEY": "your-gemini-api-key-here",
+        "OPENROUTER_API_KEY": "your-openrouter-api-key-here"
       }
     }
   }

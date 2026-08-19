@@ -56,13 +56,13 @@ def initialize_local_ssot(project_id: str, project_path: str = None) -> str:
     return f"Successfully scaffolded local SSOT in {knowledge_dir}"
 
 @mcp.tool()
-def generate_implementation_plan(project_path: str = None) -> str:
+def generate_implementation_plan(project_path: str = None, provider: str = "gemini") -> str:
     """
     Acts as the Software Architect. Reads local SSOT artifacts and generates
     a massive, professional-grade implementation-plan.md.
     """
     knowledge_dir = get_knowledge_dir(project_path)
-    generator = PlanGenerator()
+    generator = PlanGenerator(provider=provider)
     context = _get_context(knowledge_dir)
     plan_content = generator.generate_markdown_plan(system_prompt=ARCHITECT_PROMPT, context=context)
     
@@ -85,10 +85,10 @@ def generate_implementation_plan(project_path: str = None) -> str:
     return f"Implementation Plan and Agent contexts generated successfully at {output_path}"
 
 @mcp.tool()
-def generate_task_plan(project_path: str = None) -> str:
+def generate_task_plan(project_path: str = None, provider: str = "gemini") -> str:
     """Generates an exhaustive Task Plan and saves it to the local workspace."""
     knowledge_dir = get_knowledge_dir(project_path)
-    generator = PlanGenerator()
+    generator = PlanGenerator(provider=provider)
     context = _get_context(knowledge_dir)
     plan_content = generator.generate_markdown_plan(system_prompt=DEVELOPER_PROMPT, context=context)
     output_path = knowledge_dir.parent / "task-plan.md"
@@ -96,10 +96,10 @@ def generate_task_plan(project_path: str = None) -> str:
     return f"Task Plan generated successfully at {output_path}"
 
 @mcp.tool()
-def generate_test_plan(project_path: str = None) -> str:
+def generate_test_plan(project_path: str = None, provider: str = "gemini") -> str:
     """Generates an exhaustive Test Plan and saves it to the local workspace."""
     knowledge_dir = get_knowledge_dir(project_path)
-    generator = PlanGenerator()
+    generator = PlanGenerator(provider=provider)
     context = _get_context(knowledge_dir)
     plan_content = generator.generate_markdown_plan(system_prompt=TESTER_PROMPT, context=context)
     output_path = knowledge_dir.parent / "test-plan.md"

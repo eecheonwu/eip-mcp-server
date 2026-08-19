@@ -26,6 +26,7 @@ class TriggerPayload(BaseModel):
     artifacts: List[Dict] = []
     graph_context: str = ""
     project_path: str = None
+    provider: str = "gemini"
 
 def process_plan(payload: TriggerPayload):
     knowledge_dir = get_knowledge_dir(payload.project_path)
@@ -79,15 +80,15 @@ directories:
         (knowledge_dir / "system" / "WEB_GRAPH_CONTEXT.md").write_text(payload.graph_context, encoding='utf-8')
     
     if payload.plan_type == "Implementation Plan":
-        generate_implementation_plan(project_path=payload.project_path)
+        generate_implementation_plan(project_path=payload.project_path, provider=payload.provider)
     elif payload.plan_type == "Task Plan":
-        generate_task_plan(project_path=payload.project_path)
+        generate_task_plan(project_path=payload.project_path, provider=payload.provider)
     elif payload.plan_type == "Test Plan":
-        generate_test_plan(project_path=payload.project_path)
+        generate_test_plan(project_path=payload.project_path, provider=payload.provider)
     else:
         logger.warning(f"Unknown plan type: {payload.plan_type}")
         # Default to implementation plan
-        generate_implementation_plan(project_path=payload.project_path)
+        generate_implementation_plan(project_path=payload.project_path, provider=payload.provider)
         
     if payload.plan_id:
         try:
