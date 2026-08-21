@@ -35,6 +35,8 @@ def _get_context(knowledge_dir: Path) -> str:
     context_parts = []
     if knowledge_dir.exists():
         for file in knowledge_dir.rglob("*.md"):
+            if "agents" in file.parts:
+                continue
             context_parts.append(f"--- {file.name} ---\n{file.read_text(encoding='utf-8')}\n")
     return "\n".join(context_parts) if context_parts else "No local SSOT context found."
 
